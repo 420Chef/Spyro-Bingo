@@ -202,14 +202,15 @@
     </div>
 
     <div id="winModal" class="hidden">
-        <div class="panel" style="max-width:400px">
-            <h2 id="winnerTitle" style="color:var(--spyro-gold); font-size: 2.5rem;">WINS!</h2>
-            <p id="finalTime" style="font-size: 1.2rem;"></p>
-            <button onclick="location.reload()">New Game</button>
-        </div>
+    <div class="panel" style="max-width:400px">
+        <h2 id="winnerTitle" style="color:var(--spyro-gold); font-size: 2.5rem;">WINS!</h2>
+        <p id="finalTime" style="font-size: 1.2rem;"></p>
+        <button id="screenshotBtn" style="background: var(--gem-green); color: white;">Download Results</button>
+        <button onclick="location.reload()">New Game</button>
     </div>
+</div>
 
-    <script>
+<script>
         const spyro1Tasks = ["Artisans: Reach tricky platform", "Stone Hill: Burn the hidden pink tulip", "Town Square: All bulls stuck", "Peace Keepers: Scare 6 Gnorcs into tents", "Doctor Shemp: Perfect", "High Caves: Burn hidden painting", "Blowhard: Ride a Druid platform for 10 seconds", "Terrace Village: No electric floor damage", "Metalhead: Perfect", "Dream Weavers: Secret Room", "Haunted Towers: Burn blue wizard hat", "Lofty Castle: Destroy hidden stump", "Jacques: Perfect", "Gnasty Gnorc: Perfect", "Collect 12 Eggs", "Collect 69 Dragons", "Collect 8888 Gems", "Loop the Train in Sunny Flight", "Flame the Fairies in Crystal Flight", "Sunny Flight: No Charging", "Night Flight: No Charging", "Crystal Flight: No Charging", "Wild Flight: No Charging", "Icy Flight: No Charging", "Guantan Bay Sparxless", "Beat Gnasty Gnorc in a Footrace"];
 
         let currentTasks = [...spyro1Tasks];
@@ -231,19 +232,22 @@
         }
 
         function setupConn() {
-            conn.on('data', data => {
-                if (data.type === 'init') {
-                    myRole = 'p2'; currentTasks = data.tasks;
-                    generateBoard(data.seed); transitionToGame();
-                }
-                if (data.type === 'mark') {
-                    const target = document.querySelector(`[data-idx="${data.idx}"]`);
-                    if(target) target.classList.add(data.role + '-marked');
-                    checkLockout();
-                }
-                if (data.type === 'startTimer') startTimer(false);
-            });
-        }
+        conn.on('data', data => {
+            if (data.type === 'init') {
+                myRole = 'p2'; currentTasks = data.tasks;
+                generateBoard(data.seed); transitionToGame();
+            }
+            if (data.type === 'mark') {
+                const target = document.querySelector(`[data-idx="${data.idx}"]`);
+                if(target) target.classList.add(data.role + '-marked');
+                checkLockout();
+            }
+            if (data.type === 'startTimer') startTimer(false);
+            
+            // NEW: Receive Game Over from opponent
+            if (data.type === 'gameOver') handleWin(data.winner);
+        });
+    }
 
         document.getElementById('connectBtn').onclick = () => {
             const peerId = document.getElementById('peerIdInput').value;
@@ -261,6 +265,17 @@
                 setTimeout(() => status.textContent = old, 2000);
             });
         }
+
+	function checkLockout() {
+        const p1 = document.querySelectorAll('.p1-marked').length;
+        const p2 = document.querySelectorAll('.p2-marked').length;
+        if (p1 >= 13 || p2 >= 13) {
+            const winner = p1 >= 13 ? "PLAYER 1" : "PLAYER 2";
+            // NEW: Send Game Over to opponent
+            if (conn && conn.open) conn.send({ type: 'gameOver', winner: winner });
+            handleWin(winner);
+        }
+    }
 
         function toggleSettings() {
             document.getElementById('setupView').classList.toggle('hidden');
@@ -323,6 +338,27 @@
             isTimerRunning = true;
             if (send) conn.send({ type: 'startTimer' });
         }
+
+	function handleWin(winnerName) {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+        document.getElementById('winnerTitle').textContent = winnerName + " WINS!";
+        document.getElementById('finalTime').textContent = "Time: " + document.getElementById('timerDisplay').textContent;
+        document.getElementById('winModal').classList.remove('hidden');
+        confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
+
+        document.getElementById('screenshotBtn').onclick = () => {
+            html2canvas(document.getElementById('captureWrapper'), {
+                backgroundColor: "#6c5ce7", // Spyro 1 Purple
+                scale: 2
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Spyro1_Lockout_${winnerName.replace(" ", "_")}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        };
+    }
 
         function checkLockout() {
             const p1 = document.querySelectorAll('.p1-marked').length;
