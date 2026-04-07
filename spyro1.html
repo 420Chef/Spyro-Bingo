@@ -3,424 +3,326 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Spyro Challenge Bingo</title>
+    <title>Spyro 1: Dragon Bingo</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        /* Light Mode Palette */
         :root {
             --spyro-purple: #6c5ce7;
+            --spyro-dark: #2d3436;
             --spyro-gold: #fdcb6e;
-            --gem-blue: #0984e3;
             --gem-green: #2ecc71;
-            --bg-color: #f0f3f8;
-            --card-bg: #ffffff;
-            --text-color: #2d3436;
-            --border-color: #dfe6e9;
-            --input-bg: #ffffff;
-        }
-
-        /* Dark Mode Palette */
-        [data-theme="dark"] {
-            --spyro-purple: #a29bfe;
-            --spyro-gold: #e1b12c;
-            --gem-blue: #74b9ff;
-            --gem-green: #26ae60;
-            --bg-color: #1e272e;
-            --card-bg: #2f3640;
-            --text-color: #f5f6fa;
-            --border-color: #57606f;
-            --input-bg: #353b48;
+            --glass: rgba(255, 255, 255, 0.12);
+            --glass-border: rgba(255, 255, 255, 0.25);
+            --text-white: #ffffff;
+            --input-bg: #2d3436;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 10px;
-            margin: 0;
-            transition: background-color 0.3s ease;
-            overscroll-behavior-y: contain;
+            min-height: 100vh;
+            /* Purple Theme Background */
+            background: linear-gradient(180deg, #2d3436 0%, #6c5ce7 100%);
+            background-attachment: fixed;
+            color: var(--text-white);
+            overflow-x: hidden;
         }
 
-        h1 { color: var(--spyro-purple); margin: 10px 0 5px 0; font-size: 1.8rem; text-align: center; }
-        .subtitle { margin-top: 0; margin-bottom: 10px; color: #636e72; text-align: center; font-size: 0.9rem; }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: -1;
+        }
 
-        /* Timer Styles */
+        #captureWrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 650px;
+            padding: 20px 10px;
+            border-radius: 20px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin: 10px 0;
+            text-shadow: 2px 4px 8px rgba(0,0,0,0.5);
+            color: var(--spyro-gold);
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
         #timerDisplay {
-            font-size: 2rem;
+            font-family: 'Courier New', monospace;
+            font-size: 2.6rem;
             font-weight: 900;
-            font-family: monospace;
-            color: var(--spyro-purple);
-            background: var(--card-bg);
-            padding: 5px 20px;
-            border-radius: 8px;
-            border: 2px solid var(--border-color);
-            margin-bottom: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 12px 45px;
+            border-radius: 50px;
+            border: 3px solid var(--spyro-gold);
+            margin-bottom: 25px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            color: var(--spyro-gold);
         }
+
+        .bingo-card {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            width: 95vw;
+            max-width: 580px;
+            aspect-ratio: 1 / 1;
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 3px solid var(--glass-border);
+            border-radius: 18px;
+            padding: 10px;
+            gap: 6px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .cell {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 5px;
+            font-size: clamp(9px, 2.5vw, 13px);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            line-height: 1.1;
+        }
+
+        .cell:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.02); }
+
+        .cell.marked {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
+            color: white;
+            text-decoration: line-through;
+            border-color: #2ecc71;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        .free-space {
+            background: linear-gradient(135deg, #fdcb6e, #f39c12) !important;
+            color: #2d3436 !important;
+            font-weight: 900;
+            border: 2px solid white !important;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+
+        .controls { margin-top: 25px; display: flex; gap: 10px; }
+
+        button {
+            background: var(--spyro-gold);
+            color: var(--spyro-dark);
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 4px 0px #c49a4f;
+            transition: 0.1s;
+        }
+
+        button:active { transform: translateY(3px); box-shadow: 0 1px 0px #c49a4f; }
 
         #settings {
             width: 95vw;
             max-width: 600px;
-            background: var(--card-bg);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            background: rgba(45, 52, 54, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            border: 2px solid var(--spyro-gold);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             box-sizing: border-box;
         }
 
         textarea {
             width: 100%;
-            height: 120px;
+            height: 150px;
             background-color: var(--input-bg);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            margin-top: 10px;
-            padding: 8px;
-            box-sizing: border-box;
-            font-size: 12px;
-            font-family: inherit;
-        }
-
-        .controls { margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-
-        button {
-            padding: 12px 18px;
-            font-size: 14px;
-            font-weight: bold;
-            border: none;
+            color: white;
+            border: 2px solid var(--glass-border);
             border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            touch-action: manipulation;
-            transition: transform 0.1s;
+            margin-top: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+            font-size: 13px;
         }
 
-        button:active { transform: scale(0.95); }
-
-        .btn-main { background: var(--spyro-purple); color: white; }
-        .btn-toggle { background: var(--border-color); color: var(--text-color); }
-        .btn-dark { background: #2f3542; color: white; }
-        .btn-gold { background: var(--spyro-gold); color: #000; }
-
-        .bingo-card {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            width: 98vw;
-            max-width: 600px;
-            aspect-ratio: 1 / 1;
-            background: var(--card-bg);
-            border: 5px solid var(--spyro-purple);
-            user-select: none;
-            -webkit-user-select: none;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-
-        .cell {
-            border: 1px solid var(--border-color);
+        #winModal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
             display: flex;
             align-items: center;
             justify-content: center;
-            text-align: center;
-            padding: 4px;
-            font-weight: 800;
-            font-size: clamp(9px, 2.5vw, 14px); 
-            line-height: 1;
-            hyphens: auto;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            transition: background-color 0.2s;
-            word-wrap: break-word;
-            overflow: hidden;
-        }
-
-        .cell.marked { 
-            background-color: var(--gem-green) !important; 
-            color: white; 
-            text-decoration: line-through;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-        }
-
-        .free-space { 
-            background-color: var(--spyro-gold); 
-            color: #000; 
-            font-weight: 900; 
-            font-size: clamp(11px, 3vw, 16px);
-            text-transform: uppercase;
-        }
-
-        .hidden { display: none !important; }
-
-        /* Modal Styles */
-        #winModal {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.8);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 1000;
-            backdrop-filter: blur(3px);
+            z-index: 100;
+            backdrop-filter: blur(12px);
         }
 
         .modal-content {
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 16px;
+            background: #2d3436;
+            padding: 40px;
+            border-radius: 30px;
             text-align: center;
             border: 5px solid var(--spyro-gold);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-            max-width: 90%;
-            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-width: 80%;
         }
 
-        @keyframes popIn {
-            0% { transform: scale(0.8); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
+        .modal-btns { display: flex; gap: 15px; margin-top: 25px; justify-content: center; }
+        .btn-ss { background: white; color: #2d3436; }
 
-        .modal-content h2 { color: var(--spyro-purple); margin-top: 0; font-size: 2.5rem; text-transform: uppercase; }
-        .modal-content p { font-size: 1.3rem; font-weight: bold; margin-bottom: 25px; }
-        .modal-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-
-        @media print {
-            .controls, .subtitle, #settings, #timerDisplay, #winModal { display: none !important; }
-            .bingo-card { width: 6.5in; height: 6.5in; max-width: none; border: 2px solid black; }
-            .cell.marked { background-color: #eee !important; color: black !important; }
-        }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div id="captureWrapper" style="display: flex; flex-direction: column; align-items: center; width: 100%; padding-bottom: 10px; background-color: var(--bg-color);">
+    <div id="captureWrapper">
         <h1>Spyro Bingo</h1>
-        <p class="subtitle">Tap the Free Space to start the timer!</p>
+        <p class="subtitle">Tap NESTOR SKIP to start your run!</p>
 
         <div id="timerDisplay">00:00.00</div>
         
         <div class="bingo-card" id="bingo-grid"></div>
     </div>
 
-    <div class="controls" style="margin-top: 15px;">
-        <button class="btn-toggle" id="showBtn" onclick="toggleSettings()">Edit Tasks</button>
-        <button class="btn-main" onclick="confirmNewCard()">Shuffle</button>
-        <button class="btn-dark" id="themeBtn" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+    <div class="controls">
+        <button onclick="toggleSettings()">Edit Tasks</button>
+        <button onclick="confirmNewCard()">Shuffle</button>
     </div>
 
     <div id="settings" class="hidden">
-        <strong>Edit Board Items:</strong> (One per line)
+        <strong>Task List:</strong>
         <textarea id="itemInput"></textarea>
-        <div style="margin-top:10px; display: flex; gap: 10px;">
-            <button class="btn-main" onclick="updateItemsAndGenerate()">Update & New Card</button>
-            <button class="btn-toggle" onclick="toggleSettings()">Close</button>
+        <div style="margin-top:15px; display: flex; gap: 10px;">
+            <button onclick="updateItemsAndGenerate()">Update & Board</button>
+            <button style="background: #ccc; box-shadow: 0 4px 0px #999;" onclick="toggleSettings()">Cancel</button>
         </div>
     </div>
 
     <div id="winModal" class="hidden">
         <div class="modal-content">
-            <h2>You Win!</h2>
-            <p>Final Time: <span id="finalTimeDisplay"></span></p>
-            <div class="modal-buttons">
-                <button class="btn-main" onclick="closeModalAndRestart()">Start Over</button>
-                <button class="btn-gold" onclick="downloadScreenshot()">📸 Save Screenshot</button>
+            <h2 style="color: var(--spyro-gold); font-size: 3rem; margin: 0; text-transform: uppercase;">Victory!</h2>
+            <p style="font-size: 1.4rem; margin: 15px 0;">Run Time: <span id="finalTimeDisplay"></span></p>
+            <div class="modal-btns">
+                <button onclick="location.reload()">New Game</button>
+                <button class="btn-ss" onclick="downloadScreenshot()">📸 Save Result</button>
             </div>
         </div>
     </div>
 
     <script>
-        const defaultTasks = [
-            "Artisans: Reach tricky platform", "Stone Hill: Burn the hidden pink tulip", "Town Square: All bulls stuck", 
-            "Peace Keepers: Scare 6 Gnorcs into tents", "Doctor Shemp: Perfect", "High Caves: Burn hidden painting", 
-            "Blowhard: Ride a Druid platform for 10 seconds", "Terrace Village: No electric floor damage", "Metalhead: Perfect", 
-            "Dream Weavers: Secret Room", "Haunted Towers: Burn blue wizard hat", "Lofty Castle: Destroy hidden stump", 
-            "Jacques: Perfect", "Gnasty Gnorc: Perfect", "Collect 12 Eggs", "Collect 69 Dragons", "Collect 8888 Gems", 
-            "Loop the Train in Sunny Flight", "Flame the Fairies in Crystal Flight", "Sunny Flight: No Charging", 
-            "Night Flight: No Charging", "Crystal Flight: No Charging", "Wild Flight: No Charging", "Icy Flight: No Charging", 
-            "Guantan Bay Sparxless", "Beat Gnasty Gnorc in a Footrace"
-        ];
+        const defaultTasks = ["Artisans: Reach tricky platform", "Stone Hill: Burn the hidden pink tulip", "Town Square: All bulls stuck", "Peace Keepers: Scare 6 Gnorcs into tents", "Doctor Shemp: Perfect", "High Caves: Burn hidden painting", "Blowhard: Ride a Druid platform for 10 seconds", "Terrace Village: No electric floor damage", "Metalhead: Perfect", "Dream Weavers: Secret Room", "Haunted Towers: Burn blue wizard hat", "Lofty Castle: Destroy hidden stump", "Jacques: Perfect", "Gnasty Gnorc: Perfect", "Collect 12 Eggs", "Collect 69 Dragons", "Collect 8888 Gems", "Loop the Train in Sunny Flight", "Flame the Fairies in Crystal Flight", "Sunny Flight: No Charging", "Night Flight: No Charging", "Crystal Flight: No Charging", "Wild Flight: No Charging", "Icy Flight: No Charging", "Guantan Bay Sparxless", "Beat Gnasty Gnorc in a Footrace"];
 
         let currentItems = [...defaultTasks];
+        let timerInterval, startTime, isTimerRunning = false, hasWon = false;
+
         document.getElementById('itemInput').value = currentItems.join('\n');
 
-        let timerInterval;
-        let startTime;
-        let isTimerRunning = false;
-        let hasWon = false;
-
         function updateTimer() {
-            const now = Date.now();
-            const diff = now - startTime;
-            const minutes = Math.floor(diff / 60000);
-            const seconds = Math.floor((diff % 60000) / 1000);
+            const diff = Date.now() - startTime;
+            const m = Math.floor(diff / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
             const ms = Math.floor((diff % 1000) / 10);
+            document.getElementById('timerDisplay').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(2,'0')}`;
+        }
+
+        function generateCard() {
+            const grid = document.getElementById('bingo-grid');
+            grid.innerHTML = '';
+            let shuffled = [...currentItems].sort(() => 0.5 - Math.random()).slice(0, 24);
+            shuffled.splice(12, 0, "NESTOR SKIP");
+
+            shuffled.forEach((text, i) => {
+                const div = document.createElement('div');
+                div.className = (i === 12) ? 'cell free-space' : 'cell';
+                div.textContent = text;
+                div.onclick = function() {
+                    if (i === 12 && !isTimerRunning && !hasWon) {
+                        startTime = Date.now();
+                        timerInterval = setInterval(updateTimer, 10);
+                        isTimerRunning = true;
+                        this.classList.add('marked');
+                    } else if (isTimerRunning) {
+                        this.classList.toggle('marked');
+                        checkBingo();
+                    }
+                };
+                grid.appendChild(div);
+            });
+        }
+
+        function checkBingo() {
+            const cells = document.querySelectorAll('.cell');
+            const marks = Array.from(cells).map(c => c.classList.contains('marked'));
+            const wins = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20]];
             
-            document.getElementById('timerDisplay').textContent = 
-                String(minutes).padStart(2, '0') + ':' + 
-                String(seconds).padStart(2, '0') + '.' + 
-                String(ms).padStart(2, '0');
-        }
-
-        function startTimer() {
-            if (!isTimerRunning && !hasWon) {
-                startTime = Date.now();
-                timerInterval = setInterval(updateTimer, 10);
-                isTimerRunning = true;
-            }
-        }
-
-        function stopTimer() {
-            clearInterval(timerInterval);
-            isTimerRunning = false;
-        }
-
-        function resetTimer() {
-            stopTimer();
-            document.getElementById('timerDisplay').textContent = "00:00.00";
-            hasWon = false;
-        }
-
-        function toggleDarkMode() {
-            const body = document.documentElement;
-            const captureArea = document.getElementById('captureWrapper');
-            if (body.getAttribute('data-theme') === 'dark') {
-                body.setAttribute('data-theme', 'light');
-                document.getElementById('themeBtn').textContent = '🌙 Dark Mode';
-                captureArea.style.backgroundColor = '#f0f3f8';
-            } else {
-                body.setAttribute('data-theme', 'dark');
-                document.getElementById('themeBtn').textContent = '☀️ Light Mode';
-                captureArea.style.backgroundColor = '#1e272e';
+            if (wins.some(w => w.every(i => marks[i])) && !hasWon) {
+                hasWon = true;
+                clearInterval(timerInterval);
+                confetti({ particleCount: 200, spread: 80, origin: { y: 0.6 }, colors: ['#6c5ce7', '#fdcb6e', '#0984e3'] });
+                document.getElementById('finalTimeDisplay').textContent = document.getElementById('timerDisplay').textContent;
+                setTimeout(() => document.getElementById('winModal').classList.remove('hidden'), 1000);
             }
         }
 
         function toggleSettings() {
-            const s = document.getElementById('settings');
-            const b = document.getElementById('showBtn');
-            s.classList.toggle('hidden');
-            b.classList.toggle('hidden');
+            document.getElementById('settings').classList.toggle('hidden');
         }
 
         function updateItemsAndGenerate() {
-            const input = document.getElementById('itemInput').value;
-            currentItems = input.split('\n').filter(item => item.trim() !== "");
-            if (currentItems.length < 24) { alert("You need at least 24 items!"); return; }
+            currentItems = document.getElementById('itemInput').value.split('\n').filter(i => i.trim() !== "");
+            if (currentItems.length < 24) { alert("Need 24 tasks!"); return; }
             generateCard();
             toggleSettings();
         }
 
-        function confirmNewCard() {
-            if (confirm("Generate a new card? Progress and timer will be reset.")) {
-                generateCard();
-            }
-        }
-
-        function checkBingo() {
-            if (hasWon) return;
-
-            const cells = document.querySelectorAll('.cell');
-            const marks = Array.from(cells).map(cell => cell.classList.contains('marked') || cell.classList.contains('free-space'));
-            
-            const winConditions = [
-                [0,1,2,3,4], [5,6,7,8,9], [10,11,12,13,14], [15,16,17,18,19], [20,21,22,23,24],
-                [0,5,10,15,20], [1,6,11,16,21], [2,7,12,17,22], [3,8,13,18,23], [4,9,14,19,24],
-                [0,6,12,18,24], [4,8,12,16,20]
-            ];
-
-            const isWin = winConditions.some(condition => condition.every(index => marks[index]));
-
-            if (isWin) {
-                hasWon = true;
-                stopTimer(); 
-                launchCelebration();
-                
-                setTimeout(() => {
-                    document.getElementById('finalTimeDisplay').textContent = document.getElementById('timerDisplay').textContent;
-                    document.getElementById('winModal').classList.remove('hidden');
-                }, 1500);
-            }
-        }
-
-        function closeModalAndRestart() {
-            document.getElementById('winModal').classList.add('hidden');
-            generateCard();
-        }
+        function confirmNewCard() { if(confirm("Shuffle Board? Progress will reset.")) location.reload(); }
 
         function downloadScreenshot() {
             const modal = document.getElementById('winModal');
-            const captureArea = document.getElementById('captureWrapper');
-            const finalTime = document.getElementById('finalTimeDisplay').textContent;
-            
-            modal.classList.add('hidden');
+            modal.style.display = 'none';
 
-            setTimeout(() => {
-                html2canvas(captureArea, {
-                    backgroundColor: getComputedStyle(captureArea).backgroundColor,
-                    scale: 2 
-                }).then(canvas => {
-                    const link = document.createElement('a');
-                    link.download = `Spyro_Bingo_${finalTime.replace(/:|\./g, '-')}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                    modal.classList.remove('hidden');
-                });
-            }, 100);
-        }
-
-        function launchCelebration() {
-            const duration = 3 * 1000;
-            const end = Date.now() + duration;
-
-            (function frame() {
-                confetti({
-                    particleCount: 3,
-                    angle: 60,
-                    spread: 55,
-                    origin: { x: 0 },
-                    colors: ['#6c5ce7', '#fdcb6e', '#0984e3']
-                });
-                confetti({
-                    particleCount: 3,
-                    angle: 120,
-                    spread: 55,
-                    origin: { x: 1 },
-                    colors: ['#6c5ce7', '#fdcb6e', '#0984e3']
-                });
-
-                if (Date.now() < end) {
-                    requestAnimationFrame(frame);
-                }
-            }());
-        }
-
-        function generateCard() {
-            resetTimer(); 
-            
-            const grid = document.getElementById('bingo-grid');
-            grid.innerHTML = ''; 
-            let shuffled = [...currentItems].sort(() => 0.5 - Math.random());
-            let selected = shuffled.slice(0, 24);
-            selected.splice(12, 0, "NESTOR SKIP");
-
-            selected.forEach((text, index) => {
-                const square = document.createElement('div');
-                square.className = (index === 12) ? 'cell free-space' : 'cell';
-                square.textContent = text;
-                
-                square.onclick = function() { 
-                    this.classList.toggle('marked'); 
-                    if (this.classList.contains('free-space')) {
-                        startTimer();
-                    }
-                    checkBingo();
-                };
-                grid.appendChild(square);
+            html2canvas(document.getElementById('captureWrapper'), { 
+                backgroundColor: '#2d3436',
+                scale: 2 
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Spyro1_Bingo_Result.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                modal.style.display = 'flex';
             });
         }
 
