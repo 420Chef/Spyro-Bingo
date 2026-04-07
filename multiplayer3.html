@@ -13,11 +13,11 @@
             --spyro-sunset: #d35400;
             --spyro-gold: #f1c40f;
             --egg-white: #ecf0f1;
+            --gem-green: #2ecc71;
             --glass: rgba(255, 255, 255, 0.12);
             --glass-border: rgba(255, 255, 255, 0.25);
             --text-white: #ffffff;
             --input-bg: #2d3436;
-            /* Multiplayer colors - P1 is your orange theme, P2 is gold */
             --p1-color: #e67e22;
             --p2-color: #6c5ce7;
         }
@@ -30,7 +30,6 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            /* CORRECTED GRADIENT DIRECTION TO 180deg */
             background: linear-gradient(180deg, #d35400 0%, #2c3e50 100%);
             background-attachment: fixed;
             color: var(--text-white);
@@ -96,7 +95,6 @@
             color: var(--text-white);
         }
 
-        /* Lockout Marking Styles */
         .cell.p1-marked { background: var(--p1-color) !important; color: white; border-color: white; }
         .cell.p2-marked { background: var(--p2-color) !important; color: #2c3e50; border-color: black; }
 
@@ -208,12 +206,12 @@
         <div class="panel" style="max-width:400px">
             <h2 id="winnerTitle" style="color:var(--spyro-gold); font-size: 2.5rem;">WINS!</h2>
             <p id="finalTime" style="font-size: 1.2rem;"></p>
+            <button id="screenshotBtn" style="background: var(--gem-green); color: white;">Download Results</button>
             <button onclick="location.reload()">New Game</button>
         </div>
     </div>
 
     <script>
-        // Paste your exact task list here
         const spyro3Tasks = ["Sunny Villa: Flame all trees", "Sunny Villa: Skateboard course record I", "Molten Crater: Assemble tiki heads", "Molten Crater: Supercharge the wall", "Seashell Shore: Catch the funky chicken", "Icy Peak: Glide to pedestal", "Enchanted Towers: Skateboard course record II", "Spooky Swamp: Destroy all piranha signs", "Sgt. Byrd's Base: Bomb the gophers", "Frozen Altars: Beat yeti in two rounds", "Lost Fleet: Skateboard record time", "Fireworks Factory: Find Agent 9's powerup", "Charmed Ridge: The Impossible Tower", "Charmed Ridge: Shoot the temple windows", "Bentley's Outpost: Push box off the cliff", "Desert Ruins: Destroy all seaweed", "Haunted Tomb: Swim into the dark hole", "Dino Mines: Hit all the seahorses", "Dino Mines: Hit the secret dino", "Agent 9's Lab: Blow up all palm trees", "Collect 120 Eggs", "Collect 12345 Gems", "Mushroom Speedway: Sub 2 Minute Race", "Country Speedway: Sub 2m 30s Race", "Honey Speedway: Sub 3 Minute Race", "Harbor Speedway: Sub 2m 45s Race", "Enchanted Towers: Bone Dance as Spyro ONLY"];
 
         let currentTasks = [...spyro3Tasks];
@@ -246,6 +244,7 @@
                     checkLockout();
                 }
                 if (data.type === 'startTimer') startTimer(false);
+                if (data.type === 'gameOver') handleWin(data.winner);
             });
         }
 
@@ -332,12 +331,31 @@
             const p1 = document.querySelectorAll('.p1-marked').length;
             const p2 = document.querySelectorAll('.p2-marked').length;
             if (p1 >= 13 || p2 >= 13) {
-                clearInterval(timerInterval);
-                document.getElementById('winnerTitle').textContent = (p1 >= 13 ? "PLAYER 1" : "PLAYER 2") + " WINS!";
-                document.getElementById('finalTime').textContent = "Time: " + document.getElementById('timerDisplay').textContent;
-                document.getElementById('winModal').classList.remove('hidden');
-                confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
+                const winner = p1 >= 13 ? "PLAYER 1" : "PLAYER 2";
+                if (conn && conn.open) conn.send({ type: 'gameOver', winner: winner });
+                handleWin(winner);
             }
+        }
+
+        function handleWin(winnerName) {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            document.getElementById('winnerTitle').textContent = winnerName + " WINS!";
+            document.getElementById('finalTime').textContent = "Time: " + document.getElementById('timerDisplay').textContent;
+            document.getElementById('winModal').classList.remove('hidden');
+            confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
+
+            document.getElementById('screenshotBtn').onclick = () => {
+                html2canvas(document.getElementById('captureWrapper'), {
+                    backgroundColor: "#d35400",
+                    scale: 2
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `Spyro3_Lockout_${winnerName.replace(" ", "_")}.png`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                });
+            };
         }
 
         function mulberry32(a) {
