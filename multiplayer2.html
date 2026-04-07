@@ -240,6 +240,11 @@
                     checkLockout();
                 }
                 if (data.type === 'startTimer') startTimer(false);
+                
+                // NEW: Handle Game Over signal from opponent
+                if (data.type === 'gameOver') {
+                    handleWin(data.winner);
+                }
             });
         }
 
@@ -325,13 +330,24 @@
         function checkLockout() {
             const p1 = document.querySelectorAll('.p1-marked').length;
             const p2 = document.querySelectorAll('.p2-marked').length;
+            
             if (p1 >= 13 || p2 >= 13) {
-                clearInterval(timerInterval);
-                document.getElementById('winnerTitle').textContent = (p1 >= 13 ? "PLAYER 1" : "PLAYER 2") + " WINS!";
-                document.getElementById('finalTime').textContent = "Time: " + document.getElementById('timerDisplay').textContent;
-                document.getElementById('winModal').classList.remove('hidden');
-                confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
+                const winner = p1 >= 13 ? "PLAYER 1" : "PLAYER 2";
+                // Tell the other player the game is finished
+                if (conn && conn.open) {
+                    conn.send({ type: 'gameOver', winner: winner });
+                }
+                handleWin(winner);
             }
+        }
+
+        function handleWin(winnerName) {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            document.getElementById('winnerTitle').textContent = winnerName + " WINS!";
+            document.getElementById('finalTime').textContent = "Time: " + document.getElementById('timerDisplay').textContent;
+            document.getElementById('winModal').classList.remove('hidden');
+            confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
         }
 
         function mulberry32(a) {
