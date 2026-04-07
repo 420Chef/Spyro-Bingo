@@ -204,6 +204,7 @@
         <div class="panel" style="max-width:400px">
             <h2 id="winnerTitle" style="color:var(--spyro-gold); font-size: 2.5rem;">WINS!</h2>
             <p id="finalTime" style="font-size: 1.2rem;"></p>
+            <button id="screenshotBtn" style="background: var(--gem-green); color: white;">Download Results</button>
             <button onclick="location.reload()">New Game</button>
         </div>
     </div>
@@ -227,6 +228,10 @@
                 conn.on('open', () => { conn.send({ type: 'init', seed: seed, tasks: currentTasks }); });
                 transitionToGame();
             });
+            peer.on('error', err => {
+                console.error(err);
+                document.getElementById('statusMsg').textContent = "Error: " + err.type;
+            });
         }
 
         function setupConn() {
@@ -240,11 +245,7 @@
                     checkLockout();
                 }
                 if (data.type === 'startTimer') startTimer(false);
-                
-                // NEW: Handle Game Over signal from opponent
-                if (data.type === 'gameOver') {
-                    handleWin(data.winner);
-                }
+                if (data.type === 'gameOver') handleWin(data.winner);
             });
         }
 
@@ -259,10 +260,9 @@
             const idText = document.getElementById('myIdDisplay').textContent;
             navigator.clipboard.writeText(idText).then(() => {
                 const status = document.getElementById('statusMsg');
-                const originalText = status.textContent;
                 status.textContent = "ID Copied!";
-                setTimeout(() => status.textContent = originalText, 2000);
-            }).catch(err => console.error('Failed to copy: ', err));
+                setTimeout(() => status.textContent = "Ready.", 2000);
+            });
         }
 
         function toggleSettings() {
@@ -330,13 +330,9 @@
         function checkLockout() {
             const p1 = document.querySelectorAll('.p1-marked').length;
             const p2 = document.querySelectorAll('.p2-marked').length;
-            
             if (p1 >= 13 || p2 >= 13) {
                 const winner = p1 >= 13 ? "PLAYER 1" : "PLAYER 2";
-                // Tell the other player the game is finished
-                if (conn && conn.open) {
-                    conn.send({ type: 'gameOver', winner: winner });
-                }
+                if (conn && conn.open) conn.send({ type: 'gameOver', winner: winner });
                 handleWin(winner);
             }
         }
@@ -348,6 +344,18 @@
             document.getElementById('finalTime').textContent = "Time: " + document.getElementById('timerDisplay').textContent;
             document.getElementById('winModal').classList.remove('hidden');
             confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
+
+            document.getElementById('screenshotBtn').onclick = () => {
+                html2canvas(document.getElementById('captureWrapper'), {
+                    backgroundColor: "#192a56",
+                    scale: 2
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `Spyro2_Lockout_${winnerName.replace(" ", "_")}.png`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                });
+            };
         }
 
         function mulberry32(a) {
