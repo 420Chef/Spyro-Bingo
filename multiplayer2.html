@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Spyro 2 Multiplayer: Lockout</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --spyro-blue: #0984e3;
+            --spyro-navy: #192a56;
+            --spyro-gold: #fbc531;
+            --gem-green: #2ecc71;
+            --glass: rgba(255, 255, 255, 0.12);
+            --glass-border: rgba(255, 255, 255, 0.25);
+            --text-white: #ffffff;
+            --p1-color: #0984e3;
+            --p2-color: #fbc531;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #192a56 0%, #0984e3 100%);
+            background-attachment: fixed;
+            color: var(--text-white);
+            overflow-x: hidden;
+        }
+
+        #captureWrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 650px;
+            padding: 20px 10px;
+        }
+
+        h1 {
+            color: var(--spyro-gold);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin: 10px 0;
+            text-shadow: 2px 4px 8px rgba(0,0,0,0.5);
+        }
+
+        #timerDisplay {
+            font-family: 'Courier New', monospace;
+            font-size: 2.6rem;
+            font-weight: 900;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 12px 45px;
+            border-radius: 50px;
+            border: 3px solid var(--spyro-gold);
+            margin-bottom: 25px;
+            color: var(--spyro-gold);
+        }
+
+        .bingo-card {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            width: 95vw;
+            max-width: 580px;
+            aspect-ratio: 1 / 1;
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border: 3px solid var(--glass-border);
+            border-radius: 18px;
+            padding: 10px;
+            gap: 6px;
+        }
+
+        .cell {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 5px;
+            font-size: clamp(9px, 2.5vw, 12px);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: var(--text-white);
+        }
+
+        .cell.p1-marked { background: var(--p1-color) !important; color: white; border-color: white; }
+        .cell.p2-marked { background: var(--p2-color) !important; color: #192a56; border-color: black; }
+
+        .free-space {
+            background: linear-gradient(135deg, #fbc531, #f39c12) !important;
+            color: #192a56 !important;
+            border: 2px solid white !important;
+        }
+
+        .panel {
+            background: rgba(25, 42, 86, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            width: 95vw;
+            max-width: 580px;
+            border: 2px solid var(--spyro-gold);
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: var(--spyro-gold);
+            color: var(--spyro-navy);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 900;
+            cursor: pointer;
+            margin: 5px;
+            text-transform: uppercase;
+        }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--spyro-gold);
+            border: 1px solid var(--spyro-gold);
+            padding: 4px 8px;
+            font-size: 0.65rem;
+            vertical-align: middle;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            background: #2f3640;
+            color: white;
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        input {
+            background: #2f3640;
+            color: white;
+            border: 1px solid var(--glass-border);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 5px;
+        }
+
+        .hidden { display: none !important; }
+
+        #winModal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="captureWrapper">
+        <h1>Spyro 2: Lockout</h1>
+        <div id="timerDisplay">00:00.00</div>
+        <div class="bingo-card" id="bingo-grid"></div>
+    </div>
+
+    <div class="panel">
+        <div id="setupView">
+            <p>Your ID: <strong id="myIdDisplay" style="color:var(--spyro-gold)">...</strong> 
+               <button class="copy-btn" onclick="copyID()">COPY</button></p>
+            <input type="text" id="peerIdInput" placeholder="Friend's ID">
+            <button id="connectBtn">Connect</button>
+            <button onclick="toggleSettings()">Edit Tasks</button>
+            <p id="statusMsg" style="font-size:0.8rem; margin-top:10px; color:var(--spyro-gold)">Ready.</p>
+        </div>
+
+        <div id="settingsView" class="hidden">
+            <strong>Task Pool (Min 24):</strong>
+            <textarea id="itemInput"></textarea>
+            <button onclick="saveSettings()">Save Tasks</button>
+        </div>
+
+        <div id="gameView" class="hidden">
+            <span id="playerRole" style="font-weight:bold; color:var(--spyro-gold)"></span>
+            <br>
+            <button onclick="location.reload()" style="background:#c23616; color:white;">Reset Game</button>
+        </div>
+    </div>
+
+    <div id="winModal" class="hidden">
+        <div class="panel" style="max-width:400px">
+            <h2 id="winnerTitle" style="color:var(--spyro-gold); font-size: 2.5rem;">WINS!</h2>
+            <p id="finalTime" style="font-size: 1.2rem;"></p>
+            <button onclick="location.reload()">New Game</button>
+        </div>
+    </div>
+
+    <script>
+        const spyro2Tasks = ["Idol Springs: Land on idol", "Colossus: Perfect in Hockey", "Hurricos: All windmills", "Aquaria Towers: All seaweed", "Ocean Speedway: Under 1:10", "Crush's Dungeon: Perfect", "Skelos Badlands: Catbat Quartet", "Skelos Badlands: All cacti", "Scorch: All Trees", "Fracture Hills: 3 Laps of Supercharge", "Icy Speedway: Under 1:15", "Metro Speedway: Under 1:15", "Gulp's Overlook: Perfect", "Gulp's Overlook: Hit Ripto", "Canyon Speedway: Under 1:10", "Ripto's Arena: Perfect", "Collect 50 Orbs", "Collect 7777 Gems", "Ocean Speedway: Finish Ring Challenge Before Hunter", "Shady Oasis: Ride the Rocket", "Glimmer: Both Gem Lamp Orbs w/o Flight", "Sunny Beach: Get the Talisman w/o Saving the Turtles", "Zephyr: Professor Orbs with only 2 seeds", "Mystic Marsh: Pencil Orb", "Crystal Glacier: All Draclets w/o Landing", "Fracture Hills: Kill All Earthshapers"];
+
+        let currentTasks = [...spyro2Tasks];
+        let peer, conn, myRole, isHost = false, startTime, timerInterval, isTimerRunning = false;
+
+        document.getElementById('itemInput').value = currentTasks.join('\n');
+
+        function initPeer() {
+            peer = new Peer();
+            peer.on('open', id => { document.getElementById('myIdDisplay').textContent = id; });
+            peer.on('connection', c => {
+                conn = c; isHost = true; myRole = 'p1';
+                setupConn();
+                const seed = Math.floor(Math.random() * 99999);
+                generateBoard(seed);
+                conn.on('open', () => { conn.send({ type: 'init', seed: seed, tasks: currentTasks }); });
+                transitionToGame();
+            });
+        }
+
+        function setupConn() {
+            conn.on('data', data => {
+                if (data.type === 'init') {
+                    myRole = 'p2'; currentTasks = data.tasks;
+                    generateBoard(data.seed); transitionToGame();
+                }
+                if (data.type === 'mark') {
+                    document.querySelector(`[data-idx="${data.idx}"]`).classList.add(data.role + '-marked');
+                    checkLockout();
+                }
+                if (data.type === 'startTimer') startTimer(false);
+            });
+        }
+
+        document.getElementById('connectBtn').onclick = () => {
+            const peerId = document.getElementById('peerIdInput').value;
+            if (!peerId) return;
+            conn = peer.connect(peerId);
+            setupConn();
+        };
+
+        function copyID() {
+            const idText = document.getElementById('myIdDisplay').textContent;
+            navigator.clipboard.writeText(idText).then(() => {
+                const status = document.getElementById('statusMsg');
+                const originalText = status.textContent;
+                status.textContent = "ID Copied!";
+                setTimeout(() => status.textContent = originalText, 2000);
+            }).catch(err => console.error('Failed to copy: ', err));
+        }
+
+        function toggleSettings() {
+            document.getElementById('setupView').classList.toggle('hidden');
+            document.getElementById('settingsView').classList.toggle('hidden');
+        }
+
+        function saveSettings() {
+            const input = document.getElementById('itemInput').value.split('\n').filter(t => t.trim() !== "");
+            if (input.length < 24) return alert("Need 24 tasks!");
+            currentTasks = input; toggleSettings();
+        }
+
+        function transitionToGame() {
+            document.getElementById('setupView').classList.add('hidden');
+            document.getElementById('settingsView').classList.add('hidden');
+            document.getElementById('gameView').classList.remove('hidden');
+            document.getElementById('playerRole').textContent = isHost ? "P1 (BLUE)" : "P2 (GOLD)";
+        }
+
+        function generateBoard(seed) {
+            const grid = document.getElementById('bingo-grid');
+            grid.innerHTML = '';
+            const rng = mulberry32(seed);
+            let shuffled = [...currentTasks].sort(() => 0.5 - rng()).slice(0, 24);
+            shuffled.splice(12, 0, "GLIMMER SKIP");
+
+            shuffled.forEach((text, i) => {
+                const div = document.createElement('div');
+                div.className = (i === 12) ? 'cell free-space' : 'cell';
+                div.textContent = text;
+                div.dataset.idx = i;
+                div.onclick = () => handleCellClick(i);
+                grid.appendChild(div);
+            });
+        }
+
+        function handleCellClick(idx) {
+            const cell = document.querySelector(`[data-idx="${idx}"]`);
+            if (cell.classList.contains('p1-marked') || cell.classList.contains('p2-marked')) return;
+            if (idx === 12 && !isTimerRunning) {
+                startTimer(true); cell.classList.add(myRole + '-marked');
+                return;
+            }
+            if (isTimerRunning) {
+                cell.classList.add(myRole + '-marked');
+                conn.send({ type: 'mark', idx: idx, role: myRole });
+                checkLockout();
+            }
+        }
+
+        function startTimer(send) {
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const diff = Date.now() - startTime;
+                const m = Math.floor(diff / 60000);
+                const s = Math.floor((diff % 60000) / 1000);
+                const ms = Math.floor((diff % 1000) / 10);
+                document.getElementById('timerDisplay').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(2,'0')}`;
+            }, 10);
+            isTimerRunning = true;
+            if (send) conn.send({ type: 'startTimer' });
+        }
+
+        function checkLockout() {
+            const p1 = document.querySelectorAll('.p1-marked').length;
+            const p2 = document.querySelectorAll('.p2-marked').length;
+            if (p1 >= 13 || p2 >= 13) {
+                clearInterval(timerInterval);
+                document.getElementById('winnerTitle').textContent = (p1 >= 13 ? "PLAYER 1" : "PLAYER 2") + " WINS!";
+                document.getElementById('finalTime').textContent = "Time: " + document.getElementById('timerDisplay').textContent;
+                document.getElementById('winModal').classList.remove('hidden');
+                confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
+            }
+        }
+
+        function mulberry32(a) {
+            return function() {
+                var t = a += 0x6D2B79F5;
+                t = Math.imul(t ^ t >>> 15, t | 1);
+                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+        }
+
+        initPeer();
+    </script>
+</body>
+</html>
